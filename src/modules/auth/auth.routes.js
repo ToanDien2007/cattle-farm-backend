@@ -9,6 +9,8 @@ const c = require('./auth.controller');
 router.use(authLimiter);
 
 router.post('/register', validate({ body: v.register }), c.register);
+router.post('/verify-otp', validate({ body: v.verifyOtp }), c.verifyOtp);
+router.post('/resend-otp', validate({ body: v.resendOtp }), c.resendOtp);
 router.post('/login', validate({ body: v.login }), c.login);
 router.post('/refresh', validate({ body: v.refresh }), c.refresh);
 router.post('/logout', validate({ body: v.logout }), c.logout);

@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const otpTokenSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    purpose: { type: String, enum: ['RESET_PASSWORD'], required: true },
+    purpose: { type: String, enum: ['RESET_PASSWORD', 'VERIFY_ACCOUNT'], required: true },
     codeHash: { type: String, required: true }, // HMAC-SHA256, không lưu OTP gốc
     attempts: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true },

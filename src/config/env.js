@@ -14,6 +14,11 @@ const env = {
   OTP_SECRET: process.env.OTP_SECRET,
   OTP_TTL_MINUTES: Number(process.env.OTP_TTL_MINUTES) || 5,
   OTP_MAX_ATTEMPTS: Number(process.env.OTP_MAX_ATTEMPTS) || 5,
+  OTP_RESEND_SECONDS: Number(process.env.OTP_RESEND_SECONDS) || 60,
+  VERIFY_TTL_MINUTES: Number(process.env.VERIFY_TTL_MINUTES) || 10, // quá hạn chưa xác thực OTP thì tài khoản tự hủy
+
+  LOGIN_MAX_ATTEMPTS: Number(process.env.LOGIN_MAX_ATTEMPTS) || 5,
+  LOGIN_LOCK_MINUTES: Number(process.env.LOGIN_LOCK_MINUTES) || 15,
 
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: Number(process.env.SMTP_PORT) || 587,

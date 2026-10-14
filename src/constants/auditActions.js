@@ -1,2 +1,9 @@
 'use strict';
-// TODO: src/constants/auditActions.js
+module.exports = Object.freeze({
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE',
+  LOCK: 'LOCK',
+  UNLOCK: 'UNLOCK',
+  EXPORT: 'EXPORT',
+});

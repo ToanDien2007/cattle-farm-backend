@@ -6,6 +6,16 @@ const svc = require('./auth.service');
 const meta = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 exports.register = asyncHandler(async (req, res) => ok(res, await svc.register(req.body), 201));
+exports.verifyOtp = asyncHandler(async (req, res) => {
+  await svc.verifyAccount(req.body);
+  ok(res, { message: 'Xác thực thành công, bạn có thể đăng nhập' });
+});
+
+exports.resendOtp = asyncHandler(async (req, res) => {
+  await svc.resendVerifyOtp(req.body);
+  ok(res, { message: 'Nếu tài khoản đang chờ xác thực, mã OTP mới đã được gửi' });
+});
+
 exports.login = asyncHandler(async (req, res) => ok(res, await svc.login(req.body, meta(req))));
 exports.refresh = asyncHandler(async (req, res) => ok(res, await svc.refresh(req.body.refreshToken, meta(req))));
 

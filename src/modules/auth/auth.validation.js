@@ -42,6 +42,8 @@ const refresh = z.object({ refreshToken: z.string().min(1) });
 const logout = refresh;
 
 const forgotPassword = z.object({ identifier });
+const resendOtp = forgotPassword;
+const verifyOtp = z.object({ identifier, otp: z.string().regex(/^\d{6}$/, 'OTP gồm 6 chữ số') });
 
 const resetPassword = z
   .object({
@@ -65,4 +67,4 @@ const changePassword = z
     }
   });
 
-module.exports = { register, login, refresh, logout, forgotPassword, resetPassword, changePassword };
+module.exports = { verifyOtp, resendOtp, register, login, refresh, logout, forgotPassword, resetPassword, changePassword };
