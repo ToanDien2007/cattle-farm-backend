@@ -1,2 +1,20 @@
 'use strict';
-// TODO: src/modules/farm/health/vaccinations/vaccination.controller.js
+const asyncHandler = require('../../../../utils/asyncHandler');
+const ApiError = require('../../../../utils/ApiError');
+const { ok } = require('../../../../utils/response');
+const svc = require('./vaccination.service');
+const { exportVaccinations } = require('./vaccination.export');
+
+exports.list = asyncHandler(async (req, res) => ok(res, await svc.list(req.validatedQuery)));
+exports.create = asyncHandler(async (req, res) => ok(res, await svc.create(req, req.body), 201));
+exports.update = asyncHandler(async (req, res) => ok(res, await svc.update(req, req.params.id, req.body)));
+exports.export = asyncHandler(async (req, res) => exportVaccinations(req, res, req.validatedQuery));
+exports.bulkRemove = asyncHandler(async (req, res) => ok(res, await svc.remove(req, req.body.ids)));
+exports.remove = asyncHandler(async (req, res) => {
+  const r = await svc.remove(req, [req.params.id]);
+  if (r.failed.length) {
+    const f = r.failed[0];
+    throw f.code === 'VACCINATION_NOT_FOUND' ? ApiError.notFound(f.reason, f.code) : ApiError.conflict(f.reason, f.code);
+  }
+  ok(res, r);
+});

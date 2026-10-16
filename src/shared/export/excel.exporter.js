@@ -13,10 +13,10 @@ const MIME = {
 const csvSafe = (v) => (typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
 
 // columns: [{ header, key, width }]; rows: mảng object theo key. File: <base>_<YYYYMMDD_HHmmss>.<xlsx|csv>
-async function sendExport(res, { format = 'xlsx', base, sheetName, columns, rows }) {
+async function sendExport(res, { format = 'xlsx', base, sheetName, columns, rows, maxRows = EXPORT_MAX_ROWS }) {
   if (!rows.length) throw ApiError.unprocessable('Không có dữ liệu theo điều kiện hiện tại để xuất', undefined, 'NO_DATA_TO_EXPORT');
-  if (rows.length > EXPORT_MAX_ROWS) {
-    throw ApiError.unprocessable(`Tối đa ${EXPORT_MAX_ROWS} dòng mỗi lần xuất, hãy thu hẹp bộ lọc`, undefined, 'EXPORT_TOO_LARGE');
+  if (rows.length > maxRows) {
+    throw ApiError.unprocessable(`Tối đa ${maxRows} dòng mỗi lần xuất, hãy thu hẹp bộ lọc`, undefined, 'EXPORT_TOO_LARGE');
   }
 
   const wb = new ExcelJS.Workbook();

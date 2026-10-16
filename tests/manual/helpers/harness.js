@@ -47,13 +47,20 @@ function apply(d, u) {
   }
 }
 let seq = 0;
-function fakeModel({ proto = {}, build } = {}) {
+function fakeModel({ proto = {}, build, real } = {}) {
   const rows = [];
-  const P = { ...proto, save: async function save() { return this; } };
+  const P = {
+    ...proto,
+    save: async function save() {
+      if (real) { const d = new real(this); await d.validate(); if (d.searchText !== undefined) this.searchText = d.searchText; }
+      return this;
+    },
+  };
   const cur = (fn) => {
     const st = { sort: null, skip: 0, limit: Infinity, lean: false };
     const o = {
       select: () => o,
+      session: () => o,
       sort: (s) => ((st.sort = s), o),
       skip: (n) => ((st.skip = n), o),
       limit: (n) => ((st.limit = n), o),
@@ -74,10 +81,26 @@ function fakeModel({ proto = {}, build } = {}) {
   return {
     rows,
     create: async (data) => {
-      const base = build ? await build(data) : { _id: `id${++seq}`, ...data };
-      const d = Object.assign(Object.create(P), { createdAt: new Date(), updatedAt: new Date(), ...base });
-      rows.push(d);
-      return d;
+      const make = async (item) => {
+        const base = build ? await build(item) : { _id: `id${++seq}`, ...item };
+        const d = Object.assign(Object.create(P), { createdAt: new Date(), updatedAt: new Date(), ...base });
+        rows.push(d);
+        return d;
+      };
+      if (Array.isArray(data)) { const out = []; for (const item of data) out.push(await make(item)); return out; }
+      return make(data);
+    },
+    aggregate: async (pipe) => {
+      let r = rows;
+      for (const st of pipe) {
+        if (st.$match) r = r.filter((d) => match(d, st.$match));
+        else if (st.$group) {
+          const f = st.$group._id.slice(1), m = new Map();
+          r.forEach((d) => { const k = String(get(d, f)); m.set(k, (m.get(k) || 0) + 1); });
+          r = [...m].map(([k, n]) => ({ _id: k, count: n }));
+        } else throw new Error('fake: aggregate stage chưa hỗ trợ');
+      }
+      return r;
     },
     find: (f = {}) => cur((st) => {
       let r = rows.filter((d) => match(d, f));
@@ -103,23 +126,50 @@ function fakeModel({ proto = {}, build } = {}) {
 
 function setup() {
   const RealUser = req('src/modules/users/user.model.js'); // model thật (chỉ dùng schema)
-  const userBuild = async (data) => {
-    const doc = new RealUser(data);
-    await doc.validate(); // chạy validate + default + hook searchText thật
-    const o = doc.toObject();
-    return o;
+  const realBuild = (Real) => async (data) => {
+    const doc = new Real(data);
+    await doc.validate(); // chạy validate + default + hook thật
+    return doc.toObject();
   };
+  const R = {
+    Breed: req('src/modules/farm/breeds/breed.model.js'),
+    Pen: req('src/modules/farm/pens/pen.model.js'),
+    PenAssignment: req('src/modules/farm/pens/penAssignment.model.js'),
+    Cattle: req('src/modules/farm/cattle/cattle.model.js'),
+    CattleStatusHistory: req('src/modules/farm/cattle/cattleStatusHistory.model.js'),
+    ImportSession: req('src/shared/import/importSession.model.js'),
+    HealthRecord: req('src/modules/farm/health/health-records/healthRecord.model.js'),
+    Vaccination: req('src/modules/farm/health/vaccinations/vaccination.model.js'),
+    Quarantine: req('src/modules/farm/health/quarantine/quarantine.model.js'),
+    MilkRecord: req('src/modules/farm/production/milk-records/milkRecord.model.js'),
+  };
+  const fromReal = (Real) => fakeModel({ build: realBuild(Real), real: Real });
   const fake = {
-    User: fakeModel({ proto: { toPublic: RealUser.schema.methods.toPublic }, build: userBuild }),
+    User: fakeModel({ proto: { toPublic: RealUser.schema.methods.toPublic }, build: realBuild(RealUser), real: RealUser }),
     RefreshToken: fakeModel(),
     OtpToken: fakeModel(),
     AuditLog: fakeModel(),
+    Breed: fromReal(R.Breed), Pen: fromReal(R.Pen), PenAssignment: fromReal(R.PenAssignment), Cattle: fromReal(R.Cattle),
+    CattleStatusHistory: fromReal(R.CattleStatusHistory), ImportSession: fromReal(R.ImportSession),
+    HealthRecord: fromReal(R.HealthRecord), Vaccination: fromReal(R.Vaccination), Quarantine: fromReal(R.Quarantine),
+    MilkRecord: fromReal(R.MilkRecord),
   };
+  require('mongoose').startSession = async () => ({ withTransaction: async (fn) => { await fn(); }, endSession: async () => {} }); // không mô phỏng rollback
   const stub = (file, m) => { const p = path.join(ROOT, file); const mod = new Module(p); mod.filename = p; mod.loaded = true; mod.exports = m; require.cache[p] = mod; };
   stub('src/modules/users/user.model.js', fake.User);
   stub('src/modules/auth/refreshToken.model.js', fake.RefreshToken);
   stub('src/modules/auth/otpToken.model.js', fake.OtpToken);
   stub('src/shared/audit/auditLog.model.js', fake.AuditLog);
+  stub('src/modules/farm/breeds/breed.model.js', fake.Breed);
+  stub('src/modules/farm/pens/pen.model.js', fake.Pen);
+  stub('src/modules/farm/pens/penAssignment.model.js', fake.PenAssignment);
+  stub('src/modules/farm/cattle/cattle.model.js', fake.Cattle);
+  stub('src/modules/farm/cattle/cattleStatusHistory.model.js', fake.CattleStatusHistory);
+  stub('src/shared/import/importSession.model.js', fake.ImportSession);
+  stub('src/modules/farm/health/health-records/healthRecord.model.js', fake.HealthRecord);
+  stub('src/modules/farm/health/vaccinations/vaccination.model.js', fake.Vaccination);
+  stub('src/modules/farm/health/quarantine/quarantine.model.js', fake.Quarantine);
+  stub('src/modules/farm/production/milk-records/milkRecord.model.js', fake.MilkRecord);
 
   const logs = [];
   const origLog = console.log;
@@ -140,7 +190,14 @@ async function start() {
     const ct = r.headers.get('content-type') || '';
     return { status: r.status, headers: r.headers, body: ct.includes('json') ? await r.json() : null, buf: ct.includes('json') ? null : Buffer.from(await r.arrayBuffer()) };
   };
-  return { ...h, call, post: (u, b, tk) => call('POST', u, b, tk), get: (u, tk) => call('GET', u, null, tk), patch: (u, b, tk) => call('PATCH', u, b, tk), del: (u, tk) => call('DELETE', u, null, tk), close: () => server.close() };
+  const upload = async (url, name, buffer, token) => {
+    const fd = new FormData();
+    fd.append('file', new Blob([buffer]), name);
+    const r = await fetch(base + url, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: fd });
+    const ct = r.headers.get('content-type') || '';
+    return { status: r.status, body: ct.includes('json') ? await r.json() : null };
+  };
+  return { ...h, call, upload, put: (u, b, tk) => call('PUT', u, b, tk), post: (u, b, tk) => call('POST', u, b, tk), get: (u, tk) => call('GET', u, null, tk), patch: (u, b, tk) => call('PATCH', u, b, tk), del: (u, tk) => call('DELETE', u, null, tk), close: () => server.close() };
 }
 
 module.exports = { start, ROOT };

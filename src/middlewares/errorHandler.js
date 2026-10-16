@@ -14,6 +14,10 @@ module.exports = (err, req, res, next) => {
     e = ApiError.unprocessable('Dữ liệu không hợp lệ', details);
   } else if (err.name === 'CastError') {
     e = ApiError.badRequest(`Giá trị không hợp lệ ở trường ${err.path}`, 'INVALID_ID');
+  } else if (err.name === 'VersionError' || err.name === 'DocumentNotFoundError') {
+    e = ApiError.conflict('Dữ liệu đã bị thay đổi hoặc xóa trong lúc thao tác, vui lòng tải lại', 'RECORD_CONFLICT');
+  } else if (err.name === 'MulterError') {
+    e = ApiError.unprocessable(err.code === 'LIMIT_FILE_SIZE' ? 'File vượt quá dung lượng cho phép (5MB)' : 'File tải lên không hợp lệ', undefined, 'INVALID_UPLOAD');
   } else if (err.code === 11000) {
     e = ApiError.conflict('Dữ liệu trùng khóa duy nhất', 'DUPLICATE_KEY', Object.keys(err.keyPattern || {}));
   }
