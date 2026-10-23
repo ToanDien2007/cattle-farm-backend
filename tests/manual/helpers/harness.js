@@ -142,6 +142,7 @@ function setup() {
     Vaccination: req('src/modules/farm/health/vaccinations/vaccination.model.js'),
     Quarantine: req('src/modules/farm/health/quarantine/quarantine.model.js'),
     MilkRecord: req('src/modules/farm/production/milk-records/milkRecord.model.js'),
+    MeatRecord: req('src/modules/farm/production/meat-records/meatRecord.model.js'),
   };
   const fromReal = (Real) => fakeModel({ build: realBuild(Real), real: Real });
   const fake = {
@@ -152,7 +153,7 @@ function setup() {
     Breed: fromReal(R.Breed), Pen: fromReal(R.Pen), PenAssignment: fromReal(R.PenAssignment), Cattle: fromReal(R.Cattle),
     CattleStatusHistory: fromReal(R.CattleStatusHistory), ImportSession: fromReal(R.ImportSession),
     HealthRecord: fromReal(R.HealthRecord), Vaccination: fromReal(R.Vaccination), Quarantine: fromReal(R.Quarantine),
-    MilkRecord: fromReal(R.MilkRecord),
+    MilkRecord: fromReal(R.MilkRecord), MeatRecord: fromReal(R.MeatRecord),
   };
   require('mongoose').startSession = async () => ({ withTransaction: async (fn) => { await fn(); }, endSession: async () => {} }); // không mô phỏng rollback
   const stub = (file, m) => { const p = path.join(ROOT, file); const mod = new Module(p); mod.filename = p; mod.loaded = true; mod.exports = m; require.cache[p] = mod; };
@@ -170,6 +171,7 @@ function setup() {
   stub('src/modules/farm/health/vaccinations/vaccination.model.js', fake.Vaccination);
   stub('src/modules/farm/health/quarantine/quarantine.model.js', fake.Quarantine);
   stub('src/modules/farm/production/milk-records/milkRecord.model.js', fake.MilkRecord);
+  stub('src/modules/farm/production/meat-records/meatRecord.model.js', fake.MeatRecord);
 
   const logs = [];
   const origLog = console.log;

@@ -12,6 +12,8 @@ const AuditLog = require('../../../shared/audit/auditLog.model');
 const { checkPenCapacity, recordAssignment, moveCattle } = require('../pens/penAssignment.service');
 const healthRecordService = require('../health/health-records/healthRecord.service');
 const vaccinationService = require('../health/vaccinations/vaccination.service');
+const milkRecordService = require('../production/milk-records/milkRecord.service');
+const meatRecordService = require('../production/meat-records/meatRecord.service');
 const referenceGuard = require('../../../shared/referenceGuard');
 const audit = require('../../../shared/audit/auditLog.service');
 const { withTransaction } = require('../../../utils/transaction');
@@ -91,13 +93,15 @@ async function getById(id) {
   const refs = await loadRefs([c]);
 
   const parentIds = [c.sireId, c.damId].filter(Boolean);
-  const [parents, moves, statuses, history, healthRecords, vaccinations] = await Promise.all([
+  const [parents, moves, statuses, history, healthRecords, vaccinations, milk, meat] = await Promise.all([
     Cattle.find({ _id: { $in: parentIds } }).lean(),
     PenAssignment.find({ cattleId: c._id }).sort({ movedAt: -1 }).limit(50).lean(),
     CattleStatusHistory.find({ cattleId: c._id }).sort({ createdAt: -1 }).limit(50).lean(),
     AuditLog.find({ module: MODULE, entity: 'Cattle', entityId: String(c._id) }).sort({ createdAt: -1 }).limit(50).lean(),
     healthRecordService.listByCattle(c._id),
     vaccinationService.listByCattle(c._id),
+    milkRecordService.listByCattle(c._id),
+    meatRecordService.listByCattle(c._id),
   ]);
   const par = (pid) => {
     const p = parents.find((x) => String(x._id) === String(pid));
@@ -113,8 +117,7 @@ async function getById(id) {
     statusHistory: statuses,
     history: history.map((h) => ({ at: h.createdAt, action: h.action, actorId: h.actorId, before: h.before, after: h.after })), // lịch sử thay đổi
     healthRecords, vaccinations,
-    // TODO: nạp khi có module farm/production (sản lượng)
-    production: [],
+    production: { milk, meat }, // lịch sử sản lượng sữa / thịt (50 bản ghi mới nhất mỗi loại)
   };
 }
 

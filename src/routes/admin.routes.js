@@ -15,6 +15,7 @@ router.use('/farm/health-records', require('../modules/farm/health/health-record
 router.use('/farm/vaccinations', require('../modules/farm/health/vaccinations/vaccination.routes'));
 router.use('/farm/quarantines', require('../modules/farm/health/quarantine/quarantine.routes'));
 router.use('/farm/milk-records', require('../modules/farm/production/milk-records/milkRecord.routes'));
+router.use('/farm/meat-records', require('../modules/farm/production/meat-records/meatRecord.routes'));
 // TODO: farm/* (còn lại), shop/*, shipping/*, reports/*
 
 module.exports = router;

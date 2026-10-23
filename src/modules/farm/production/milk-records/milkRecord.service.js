@@ -57,6 +57,12 @@ async function getById(id) {
   if (!r) throw notFound();
   return { ...toItem(r, await loadPens([r])), amendments: r.amendments || [], canEditFreely: ymdOf(r.createdAt) === todayYmdVN() };
 }
++// Dùng cho chi tiết bò (module cattle)
+async function listByCattle(cattleId, limit = 50) {
+  const rows = await MilkRecord.find({ cattleId, deletedAt: null }).sort({ date: -1, _id: -1 }).limit(limit).lean();
+  const pens = await loadPens(rows);
+  return rows.map((r) => toItem(r, pens));
+}
 
 // Mỗi bò chỉ được ghi nhận 1 lần / ca / ngày
 async function assertNoDuplicate({ cattleId, cattleCode, date, shift, excludeId }) {
@@ -135,4 +141,4 @@ async function remove(req, ids) {
   return { deleted, failed };
 }
 
-module.exports = { buildFilter, loadPens, list, getById, create, update, remove, toItem };
+module.exports = { buildFilter, loadPens, list, getById, listByCattle, create, update, remove, toItem };
